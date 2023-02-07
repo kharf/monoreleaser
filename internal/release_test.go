@@ -1,0 +1,99 @@
+package monoreleaser
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func createGithubReleaserAndAssert(t *testing.T) (*GithubReleaser, http.Header) {
+	userSettings := UserSettings{Token: "abcd"}
+	releaser, _ := NewGithubReleaser("kharf", repository, userSettings)
+
+	expectedUrl, _ := url.Parse("https://api.github.com/repos/kharf/myrepo/releases")
+	assert.Equal(t, expectedUrl.String(), releaser.url.String())
+
+	actualHeader := releaser.header
+	expectedHeader := http.Header{}
+	expectedHeader.Add("Accept", "application/vnd.github+json")
+	expectedHeader.Add("Authorization", "Bearer "+userSettings.Token)
+
+	assert.Equal(t, expectedHeader.Get("Accept"), actualHeader.Get("Accept"))
+	assert.Equal(t, expectedHeader.Get("Authorization"), actualHeader.Get("Authorization"))
+	return releaser, expectedHeader
+}
+
+func createServer(t *testing.T, expectedHeader http.Header, changelog Changelog, expectedResponseStatusCode int) *httptest.Server {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		actualHeader := r.Header
+		assert.Equal(t, expectedHeader.Get("Accept"), actualHeader.Get("Accept"))
+		assert.Equal(t, expectedHeader.Get("Authorization"), actualHeader.Get("Authorization"))
+
+		actualBody, err := io.ReadAll(r.Body)
+		assert.NoError(t, err)
+		expectedBody, _ := json.Marshal(map[string]string{
+			"tag_name": "v1",
+			"body":     string(changelog),
+		})
+
+		assert.Equal(t, expectedBody, actualBody)
+
+		w.WriteHeader(expectedResponseStatusCode)
+	}))
+	return ts
+}
+
+func TestGithubReleaser_Release(t *testing.T) {
+	changes := Extract(commits)
+	changelog, _ := GenerateChangelog(changes)
+	releaser, expectedHeader := createGithubReleaserAndAssert(t)
+
+	ts := createServer(t, expectedHeader, changelog, 201)
+
+	defer ts.Close()
+
+	url, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	releaser.url = url
+
+	err = releaser.Release("v1", ReleaseOptions{})
+	assert.NoError(t, err)
+}
+
+func TestGithubReleaser_Release_500(t *testing.T) {
+	changes := Extract(commits)
+	changelog, _ := GenerateChangelog(changes)
+	releaser, expectedHeader := createGithubReleaserAndAssert(t)
+
+	ts := createServer(t, expectedHeader, changelog, 500)
+
+	defer ts.Close()
+
+	url, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	releaser.url = url
+
+	err = releaser.Release("v1", ReleaseOptions{})
+	assert.ErrorIs(t, err, ErrRequestUnsuccessful)
+}
+
+func TestGithubReleaser_Release_NoCommitHistory(t *testing.T) {
+	changes := Extract(commits)
+	changelog, _ := GenerateChangelog(changes)
+	releaser, expectedHeader := createGithubReleaserAndAssert(t)
+
+	ts := createServer(t, expectedHeader, changelog, 500)
+
+	defer ts.Close()
+
+	url, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	releaser.url = url
+
+	err = releaser.Release("v1", ReleaseOptions{Module: "notexisting"})
+}
