@@ -1,0 +1,70 @@
+name: build
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [ '*' ]
+  push:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout out repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: latest
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout out repository
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Verify
+        run: |
+          go mod verify
+
+      - name: Test
+        id: test
+        run: |
+          go test -coverprofile=c.out -covermode=count ./...
+          go tool cover -func=c.out
+          total_coverage="$(go tool cover -func=c.out | grep total | grep -Eo '[0-9]+\.[0-9]+')"
+          echo "total_coverage=$total_coverage" >> $GITHUB_OUTPUT
+
+      - name: Create comment
+        if: ${{github.event_name == 'pull_request'}}
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            Total Test Coverage:
+            ${{ steps.test.outputs.total_coverage}}% 
+          reactions: heart
