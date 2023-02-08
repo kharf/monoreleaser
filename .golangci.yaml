@@ -1,0 +1,33 @@
+# Options for analysis running.
+run:
+  # Include test files or not.
+  tests: false
+
+  # Allowed values: readonly|vendor|mod
+  # By default, it isn't set.
+  modules-download-mode: readonly
+
+  # Allow multiple parallel golangci-lint instances running.
+  # If false (default) - golangci-lint acquires file lock on start.
+  allow-parallel-runners: true
+
+linters:
+  enable-all: true
+  disable:
+    - gosec
+    - ireturn # until generics are ignored
+    - gomnd
+    - noctx
+    - gofumpt
+    - goimports
+    - gci
+    - wrapcheck
+    - wsl
+    - durationcheck
+    - nlreturn
+    - varnamelen
+    - tagliatelle
+    - exhaustivestruct
+    - exhaustruct
+    - lll
+    - golint
