@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	dir := "/home/kharf/code/campaign-orchestration"
+	dir := "/Users/fritzk/code/campaign-orchestration"
 
 	r, err := git.PlainOpen(dir)
 	if err != nil {
@@ -35,4 +35,6 @@ func main() {
 		log.Println(change.Semantic)
 		log.Println(change.Message)
 	}
+
+	log.Println(monoreleaser.GenerateChangelog(changes))
 }
