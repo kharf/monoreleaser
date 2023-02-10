@@ -30,6 +30,7 @@ func main() {
 	}
 
 	changes := monoreleaser.Extract(diffs)
+
 	for _, change := range changes {
 		log.Println(change.Hash)
 		log.Println(change.Semantic)
