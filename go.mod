@@ -3,7 +3,7 @@ module github.com/kharf/monoreleaser
 go 1.20
 
 require (
-	github.com/go-git/go-billy/v5 v5.4.0
+	github.com/go-git/go-billy/v5 v5.4.1
 	github.com/go-git/go-git/v5 v5.5.2
 	github.com/stretchr/testify v1.7.0
 )
