@@ -25,45 +25,13 @@ type Releaser interface {
 	Release(version string, opts ReleaseOptions) error
 }
 
-// A VCSReleaser is capable of drafting and tagging of release versions. It doesn't post Changelogs.
-type VCSReleaser struct {
-	Repository Repository
-}
-
-var _ Releaser = VCSReleaser{}
-
-func (rel VCSReleaser) Release(version string, opts ReleaseOptions) error {
-	monoRepo := rel.Repository
-	tags, err := monoRepo.GetTags(GetTagOptions{Module: opts.Module})
-	if err != nil {
-		return err
-	}
-	_, _ = monoRepo.Tag(version, TagOptions{Module: opts.Module})
-
-	// diffs, err := monoRepo.Diff(*newTag, *oldTag, monoreleaser.DiffOptions{PathFilter: filter})
-
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// changes := monoreleaser.Extract(diffs)
-	// for _, change := range changes {
-	// 	log.Println(change.Hash)
-	// 	log.Println(change.Semantic)
-	// 	log.Println(change.Message)
-	// }
-
-	// cl, _ := monoreleaser.GenerateChangelog(changes)
-	return nil
-}
-
 // A GithubReleaser makes use of Git to tag/release versions and the Github Rest API to post releases/changelogs.
 // Use the constructor for a preconfigured git repository and http client.
 type GithubReleaser struct {
-	vcsReleaser VCSReleaser
-	client      http.Client
-	url         *url.URL
-	header      http.Header
+	repository Repository
+	client     http.Client
+	url        *url.URL
+	header     http.Header
 }
 
 var _ Releaser = GithubReleaser{}
@@ -74,7 +42,6 @@ type UserSettings struct {
 }
 
 func NewGithubReleaser(owner string, repository Repository, userSettings UserSettings) (*GithubReleaser, error) {
-	vcsReleaser := VCSReleaser{Repository: repository}
 	client := http.Client{}
 	header := http.Header{}
 	header.Add("Accept", "application/vnd.github+json")
@@ -86,28 +53,45 @@ func NewGithubReleaser(owner string, repository Repository, userSettings UserSet
 	}
 
 	return &GithubReleaser{
-		vcsReleaser: vcsReleaser,
-		client:      client,
-		url:         url,
-		header:      header,
+		repository: repository,
+		client:     client,
+		url:        url,
+		header:     header,
 	}, nil
 }
 
 func (rel GithubReleaser) Release(version string, opts ReleaseOptions) error {
-	// diffs, err := monoRepo.Diff(*newTag, *oldTag, monoreleaser.DiffOptions{PathFilter: filter})
+	monoRepo := rel.repository
+	tags, err := monoRepo.GetTags(GetTagOptions{Module: opts.Module})
+	if err != nil {
+		return err
+	}
 
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	tag, err := monoRepo.Tag(version, TagOptions{Module: opts.Module})
+	if err != nil {
+		return err
+	}
 
-	// changes := monoreleaser.Extract(diffs)
-	// for _, change := range changes {
-	// 	log.Println(change.Hash)
-	// 	log.Println(change.Semantic)
-	// 	log.Println(change.Message)
-	// }
+	var latestTag *Tag
+	if len(tags) > 0 {
+		latestTag = &tags[0]
+	}
 
-	// cl, _ := monoreleaser.GenerateChangelog(changes)
+	diffs, err := monoRepo.Diff(*tag, latestTag, DiffOptions{Module: opts.Module})
+	if err != nil {
+		return err
+	}
+
+	cl, err := GenerateChangelog(Extract(diffs))
+	if err != nil {
+		return err
+	}
+
+	err = rel.post(*tag, cl)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

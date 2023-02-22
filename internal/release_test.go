@@ -3,15 +3,45 @@ package monoreleaser
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 )
 
-func createGithubReleaserAndAssert(t *testing.T) (*GithubReleaser, http.Header) {
+func createRepoAndGithubReleaser(t *testing.T) ([]*Commit, *GithubReleaser, http.Header) {
+	repository, commits, _, _ := newRepo(false)
+
+	workTree, err := repository.repository.Worktree()
+	if err != nil {
+		log.Panic(err)
+	}
+
+	fs := workTree.Filesystem
+	file, err := fs.Create("myNewReleaseChange")
+	if err != nil {
+		log.Panic(err)
+	}
+	workTree.Add(file.Name())
+	message := "feat: my release change"
+	lastCommitHash, err := workTree.Commit(message, &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "orca",
+			Email: "orca-dev@mail.com",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+	commits = append(commits, &Commit{Hash: lastCommitHash.String(), Message: message})
+
 	userSettings := UserSettings{Token: "abcd"}
 	releaser, _ := NewGithubReleaser("kharf", repository, userSettings)
 
@@ -25,7 +55,7 @@ func createGithubReleaserAndAssert(t *testing.T) (*GithubReleaser, http.Header) 
 
 	assert.Equal(t, expectedHeader.Get("Accept"), actualHeader.Get("Accept"))
 	assert.Equal(t, expectedHeader.Get("Authorization"), actualHeader.Get("Authorization"))
-	return releaser, expectedHeader
+	return commits, releaser, expectedHeader
 }
 
 func createServer(t *testing.T, expectedHeader http.Header, changelog Changelog, expectedResponseStatusCode int) *httptest.Server {
@@ -49,12 +79,12 @@ func createServer(t *testing.T, expectedHeader http.Header, changelog Changelog,
 }
 
 func TestGithubReleaser_Release(t *testing.T) {
-	changes := Extract(commits)
+	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t)
+	diffs := []*Commit{commits[len(commits)-1]}
+	changes := Extract(diffs)
 	changelog, _ := GenerateChangelog(changes)
-	releaser, expectedHeader := createGithubReleaserAndAssert(t)
 
 	ts := createServer(t, expectedHeader, changelog, 201)
-
 	defer ts.Close()
 
 	url, err := url.Parse(ts.URL)
@@ -66,12 +96,12 @@ func TestGithubReleaser_Release(t *testing.T) {
 }
 
 func TestGithubReleaser_Release_500(t *testing.T) {
-	changes := Extract(commits)
+	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t)
+	diffs := []*Commit{commits[len(commits)-1]}
+	changes := Extract(diffs)
 	changelog, _ := GenerateChangelog(changes)
-	releaser, expectedHeader := createGithubReleaserAndAssert(t)
 
 	ts := createServer(t, expectedHeader, changelog, 500)
-
 	defer ts.Close()
 
 	url, err := url.Parse(ts.URL)
@@ -83,17 +113,7 @@ func TestGithubReleaser_Release_500(t *testing.T) {
 }
 
 func TestGithubReleaser_Release_NoCommitHistory(t *testing.T) {
-	changes := Extract(commits)
-	changelog, _ := GenerateChangelog(changes)
-	releaser, expectedHeader := createGithubReleaserAndAssert(t)
-
-	ts := createServer(t, expectedHeader, changelog, 500)
-
-	defer ts.Close()
-
-	url, err := url.Parse(ts.URL)
-	assert.NoError(t, err)
-	releaser.url = url
-
-	err = releaser.Release("v1", ReleaseOptions{Module: "notexisting"})
+	_, releaser, _ := createRepoAndGithubReleaser(t)
+	err := releaser.Release("v1", ReleaseOptions{Module: "notexisting"})
+	assert.ErrorIs(t, err, ErrEndOfHistory)
 }

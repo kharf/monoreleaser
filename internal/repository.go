@@ -1,6 +1,8 @@
 package monoreleaser
 
 import (
+	"errors"
+	"io"
 	"sort"
 	"strings"
 
@@ -22,21 +24,6 @@ var _ Iter[any] = GenericIter[any]{}
 
 func (iter GenericIter[T]) Next() (T, error) {
 	return iter.NextFunc()
-}
-
-// TagIter traverses a list of Tags of a repository.
-type TagIter struct {
-	genericIter GenericIter[*Tag]
-}
-
-var _ Iter[*Tag] = TagIter{}
-
-func NewTagIter(genericIter GenericIter[*Tag]) TagIter {
-	return TagIter{genericIter}
-}
-
-func (iter TagIter) Next() (*Tag, error) {
-	return iter.genericIter.Next()
 }
 
 type Commit struct {
@@ -62,10 +49,11 @@ type Repository interface {
 	Tag(version string, opts TagOptions) (*Tag, error)
 	// GetTag retrieves a specific important point(Tag) from a repository's history.
 	GetTag(version string, opts GetTagOptions) (*Tag, error)
-	// GetTags retrieves important points(Tags) from a repository's history. (unsorted)
+	// GetTags retrieves important points(Tags) from a repository's history, sorted by name (highest first).
 	GetTags(opts GetTagOptions) ([]Tag, error)
 	// Diff compares histories of two Tags and returns the Commits in between.
-	Diff(newerTag, olderTag Tag, opts DiffOptions) ([]*Commit, error)
+	// If no olderTag provided, the commit history reachable from newerTag will be returned.
+	Diff(newerTag Tag, olderTag *Tag, opts DiffOptions) ([]*Commit, error)
 }
 
 type GoGitRepository struct {
@@ -96,16 +84,24 @@ func (repo GoGitRepository) Head() (string, error) {
 	return head.Hash().String(), nil
 }
 
+var (
+	ErrEndOfHistory     = errors.New("no more commits available")
+	ErrUnrecognizedHash = errors.New("unrecognized hash provided")
+)
+
 func (repo GoGitRepository) History(opts HistoryOptions) (*GenericIter[*Commit], error) {
 	var filter func(path string) bool
 	if opts.Module != "" {
 		filter = func(path string) bool {
-			return strings.HasPrefix(path, tagPrefix(opts.Module))
+			return strings.HasPrefix(path, modulePrefix(opts.Module))
 		}
 	}
 	var from plumbing.Hash
 	if opts.Hash != "" {
 		from = plumbing.NewHash(opts.Hash)
+		if from == plumbing.ZeroHash {
+			return nil, ErrUnrecognizedHash
+		}
 	}
 
 	newTagCommitIter, err := repo.repository.Log(&git.LogOptions{From: from, PathFilter: filter})
@@ -117,6 +113,10 @@ func (repo GoGitRepository) History(opts HistoryOptions) (*GenericIter[*Commit],
 	return &GenericIter[*Commit]{
 		NextFunc: func() (*Commit, error) {
 			commit, err := newTagCommitIter.Next()
+			if errors.Is(err, io.EOF) {
+				return nil, ErrEndOfHistory
+			}
+
 			if err != nil {
 				return nil, err
 			}
@@ -129,7 +129,7 @@ func (repo GoGitRepository) History(opts HistoryOptions) (*GenericIter[*Commit],
 	}, nil
 }
 
-func tagPrefix(module string) string {
+func modulePrefix(module string) string {
 	return module + "/"
 }
 
@@ -172,8 +172,14 @@ type GetTagOptions struct {
 	Module string
 }
 
+var ErrTagNotFound = errors.New("tag not found")
+
 func (repo GoGitRepository) GetTag(version string, opts GetTagOptions) (*Tag, error) {
 	tag, err := repo.repository.Tag(tagName(version, opts.Module))
+	if errors.Is(err, git.ErrTagNotFound) {
+		return nil, ErrTagNotFound
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -185,41 +191,27 @@ func (repo GoGitRepository) GetTag(version string, opts GetTagOptions) (*Tag, er
 }
 
 func (repo GoGitRepository) GetTags(opts GetTagOptions) ([]Tag, error) {
-	commits, err := repo.History(HistoryOptions{Module: opts.Module})
-	if err != nil {
-		return nil, err
-	}
-
-	var commit *Commit
-	for commit, err = commits.Next(); err == nil && commit != nil; {
-
-	}
-
+	tags, err := repo.repository.Tags()
 	if err != nil {
 		return nil, err
 	}
 
 	var prefix string
 	if opts.Module != "" {
-		prefix = tagPrefix(opts.Module)
+		prefix = modulePrefix(opts.Module)
 	}
 
-	tagIter := TagIter{
-		genericIter: GenericIter[*Tag]{
-			NextFunc: func() (*Tag, error) {
-				if err := tags.ForEach(func(ref *plumbing.Reference) error {
-					if strings.HasPrefix(ref.Name().Short(), prefix) {
-						return &Tag{
-							Name: ref.Name().Short(),
-							Hash: ref.Hash().String(),
-						}, nil
-					}
-					return nil
-				}); err != nil {
-					return nil, err
-				}
-			},
-		},
+	var moduleTags []Tag
+	if err := tags.ForEach(func(ref *plumbing.Reference) error {
+		if strings.HasPrefix(ref.Name().Short(), prefix) {
+			moduleTags = append(moduleTags, Tag{
+				Name: ref.Name().Short(),
+				Hash: ref.Hash().String(),
+			})
+		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
 	sort.Slice(moduleTags, func(i, j int) bool {
@@ -241,7 +233,7 @@ func tagName(name string, module string) string {
 	if module == "" {
 		tagName = name
 	} else {
-		tagName = tagPrefix(module) + name
+		tagName = modulePrefix(module) + name
 	}
 
 	return tagName
@@ -253,24 +245,27 @@ type DiffOptions struct {
 	Module string
 }
 
-func (repository GoGitRepository) Diff(newerTag, olderTag Tag, opts DiffOptions) ([]*Commit, error) {
+func (repository GoGitRepository) Diff(newerTag Tag, olderTag *Tag, opts DiffOptions) ([]*Commit, error) {
 	historyIter, err := repository.History(HistoryOptions{Hash: newerTag.Hash, Module: opts.Module})
 
 	if err != nil {
-		return nil, err
+		return []*Commit{}, err
 	}
 
 	commitDiffs := make([]*Commit, 0, 20)
 	for {
 		newCommit, err := historyIter.Next()
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrEndOfHistory) {
 			return []*Commit{}, err
 		}
 
-		if newCommit.Hash == olderTag.Hash {
+		if newCommit == nil || errors.Is(err, ErrEndOfHistory) {
 			break
 		}
 
+		if olderTag != nil && newCommit.Hash == olderTag.Hash {
+			break
+		}
 		commitDiffs = append(commitDiffs, newCommit)
 	}
 
