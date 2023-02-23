@@ -63,6 +63,13 @@ type GoGitRepository struct {
 
 var _ Repository = GoGitRepository{}
 
+func NewGoGitRepository(name string, repository *git.Repository) GoGitRepository {
+	return GoGitRepository{
+		name:       name,
+		repository: repository,
+	}
+}
+
 // Optional parameters for getting the history.
 type HistoryOptions struct {
 	// When the Hash option is set the log will only contain commits reachable from it.

@@ -33,3 +33,5 @@ linters:
     - golint
     - cyclop
     - gosimple
+    - forbidigo
+    - funlen

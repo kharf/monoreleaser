@@ -75,7 +75,7 @@ func write(header string, sb *strings.Builder, change Change) error {
 			return err
 		}
 	}
-	if _, err := sb.WriteString(change.Message + "\n"); err != nil {
+	if _, err := sb.WriteString("- " + change.Message + "\n"); err != nil {
 		return err
 	}
 	return nil
