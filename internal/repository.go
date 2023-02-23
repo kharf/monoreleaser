@@ -245,8 +245,8 @@ type DiffOptions struct {
 	Module string
 }
 
-func (repository GoGitRepository) Diff(newerTag Tag, olderTag *Tag, opts DiffOptions) ([]*Commit, error) {
-	historyIter, err := repository.History(HistoryOptions{Hash: newerTag.Hash, Module: opts.Module})
+func (repo GoGitRepository) Diff(newerTag Tag, olderTag *Tag, opts DiffOptions) ([]*Commit, error) {
+	historyIter, err := repo.History(HistoryOptions{Hash: newerTag.Hash, Module: opts.Module})
 
 	if err != nil {
 		return []*Commit{}, err

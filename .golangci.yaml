@@ -32,3 +32,4 @@ linters:
     - lll
     - golint
     - cyclop
+    - gosimple
