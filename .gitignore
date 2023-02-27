@@ -1,0 +1,16 @@
+# intellij
+.idea
+*.iml
+
+# vsc
+.vscode
+
+# go
+go.work
+go.work.sum
+output/
+build/
+
+# config
+config/
+config.yaml

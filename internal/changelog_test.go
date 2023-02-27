@@ -23,20 +23,20 @@ func TestGenerateChangelog(t *testing.T) {
 	changelog, _ := GenerateChangelog(changes)
 	expected := Changelog(`# What's Changed
 ## 💔 Breaking
-feat!: major change
+- feat!: major change
 
 ## 🚀 Minor
-feat: oldest
-style: change
-chore: change
-test: change
-refactor: change
-ci: change
-build: change
-docs: newest
+- feat: oldest
+- style: change
+- chore: change
+- test: change
+- refactor: change
+- ci: change
+- build: change
+- docs: newest
 
 ## 🐛 Patch
-fix: patch change
+- fix: patch change
 
 `)
 

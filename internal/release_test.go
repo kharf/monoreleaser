@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func createRepoAndGithubReleaser(t *testing.T) ([]*Commit, *GithubReleaser, http.Header) {
+func createRepoAndGithubReleaser(t *testing.T, userSettings UserSettings) ([]*Commit, *GithubReleaser, http.Header) {
 	repository, commits, _, _ := newRepo(false)
 
 	workTree, err := repository.repository.Worktree()
@@ -42,7 +42,6 @@ func createRepoAndGithubReleaser(t *testing.T) ([]*Commit, *GithubReleaser, http
 	}
 	commits = append(commits, &Commit{Hash: lastCommitHash.String(), Message: message})
 
-	userSettings := UserSettings{Token: "abcd"}
 	releaser, _ := NewGithubReleaser("kharf", repository, userSettings)
 
 	expectedUrl, _ := url.Parse("https://api.github.com/repos/kharf/myrepo/releases")
@@ -51,7 +50,9 @@ func createRepoAndGithubReleaser(t *testing.T) ([]*Commit, *GithubReleaser, http
 	actualHeader := releaser.header
 	expectedHeader := http.Header{}
 	expectedHeader.Add("Accept", "application/vnd.github+json")
-	expectedHeader.Add("Authorization", "Bearer "+userSettings.Token)
+	if userSettings.Token != "" {
+		expectedHeader.Add("Authorization", "Bearer "+userSettings.Token)
+	}
 
 	assert.Equal(t, expectedHeader.Get("Accept"), actualHeader.Get("Accept"))
 	assert.Equal(t, expectedHeader.Get("Authorization"), actualHeader.Get("Authorization"))
@@ -79,7 +80,24 @@ func createServer(t *testing.T, expectedHeader http.Header, changelog Changelog,
 }
 
 func TestGithubReleaser_Release(t *testing.T) {
-	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t)
+	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t, UserSettings{Token: "abcd"})
+	diffs := []*Commit{commits[len(commits)-1]}
+	changes := Extract(diffs)
+	changelog, _ := GenerateChangelog(changes)
+
+	ts := createServer(t, expectedHeader, changelog, 201)
+	defer ts.Close()
+
+	url, err := url.Parse(ts.URL)
+	assert.NoError(t, err)
+	releaser.url = url
+
+	err = releaser.Release("v1", ReleaseOptions{})
+	assert.NoError(t, err)
+}
+
+func TestGithubReleaser_Release_NoToken(t *testing.T) {
+	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t, UserSettings{})
 	diffs := []*Commit{commits[len(commits)-1]}
 	changes := Extract(diffs)
 	changelog, _ := GenerateChangelog(changes)
@@ -96,7 +114,7 @@ func TestGithubReleaser_Release(t *testing.T) {
 }
 
 func TestGithubReleaser_Release_500(t *testing.T) {
-	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t)
+	commits, releaser, expectedHeader := createRepoAndGithubReleaser(t, UserSettings{Token: "abcd"})
 	diffs := []*Commit{commits[len(commits)-1]}
 	changes := Extract(diffs)
 	changelog, _ := GenerateChangelog(changes)
@@ -113,7 +131,7 @@ func TestGithubReleaser_Release_500(t *testing.T) {
 }
 
 func TestGithubReleaser_Release_NoCommitHistory(t *testing.T) {
-	_, releaser, _ := createRepoAndGithubReleaser(t)
+	_, releaser, _ := createRepoAndGithubReleaser(t, UserSettings{})
 	err := releaser.Release("v1", ReleaseOptions{Module: "notexisting"})
 	assert.ErrorIs(t, err, ErrEndOfHistory)
 }
