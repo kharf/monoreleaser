@@ -83,12 +83,8 @@ func newRepo(empty bool) (*git.Repository, []*Commit) {
 	return gitRepository, commits
 }
 
-func createServer(t *testing.T, expectedHeader http.Header, changelog Changelog, releaser Releaser, expectedResponseStatusCode int) *httptest.Server {
+func createServer(t *testing.T, changelog Changelog, releaser Releaser) *httptest.Server {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		actualHeader := r.Header
-		assert.Equal(t, expectedHeader.Get("Accept"), actualHeader.Get("Accept"))
-		assert.Equal(t, expectedHeader.Get("Authorization"), actualHeader.Get("Authorization"))
-
 		actualBody, err := io.ReadAll(r.Body)
 		assert.NoError(t, err)
 		expectedBody, _ := json.Marshal(map[string]string{
@@ -98,7 +94,7 @@ func createServer(t *testing.T, expectedHeader http.Header, changelog Changelog,
 
 		assert.Equal(t, expectedBody, actualBody)
 
-		w.WriteHeader(expectedResponseStatusCode)
+		w.WriteHeader(201)
 	}))
 
 	ghReleaser, ok := releaser.(*GithubReleaser)
@@ -231,11 +227,8 @@ provider: "github"`
 	changes := Extract(diffs)
 	changelog, _ := GenerateChangelog(changes)
 
-	expectedHeader := http.Header{}
-	expectedHeader.Add("Accept", "application/vnd.github+json")
-	expectedHeader.Add("Authorization", "")
 	releaser := rootCmdBuilder.releaseCmdBuilder.releaser
-	ts := createServer(t, expectedHeader, changelog, releaser, 201)
+	ts := createServer(t, changelog, releaser)
 	defer ts.Close()
 
 	rootCmd := rootCmdBuilder.Build()

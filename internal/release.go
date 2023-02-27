@@ -49,9 +49,7 @@ func NewGithubReleaser(owner string, repository Repository, userSettings UserSet
 	client := http.Client{}
 	header := http.Header{}
 	header.Add("Accept", "application/vnd.github+json")
-	if userSettings.Token != "" {
-		header.Add("Authorization", "Bearer "+userSettings.Token)
-	}
+	header.Add("Authorization", "Bearer "+userSettings.Token)
 
 	url, err := url.Parse("https://api.github.com/repos/" + owner + "/" + repository.Name() + "/releases")
 	if err != nil {

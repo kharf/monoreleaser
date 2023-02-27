@@ -92,7 +92,7 @@ func initConfig(configFile string) (*viper.Viper, error) {
 	config.SetEnvPrefix("mr")
 	config.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	if err := viper.BindEnv("github.token"); err != nil {
+	if err := config.BindEnv("github.token"); err != nil {
 		return nil, err
 	}
 
