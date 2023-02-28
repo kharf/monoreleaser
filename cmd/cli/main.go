@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	monoreleaser "github.com/kharf/monoreleaser/internal"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -31,25 +33,51 @@ It aims to support a variety of Languages, Repository structures and Git hosting
 
 type ReleaseCommandBuilder struct {
 	releaser monoreleaser.Releaser
+	fs       afero.Fs
 }
 
 func (builder ReleaseCommandBuilder) Build() *cobra.Command {
-	return &cobra.Command{
+	var artifacts *[]string
+	cmd := &cobra.Command{
 		Use:   "release [MODULE] [VERSION]",
 		Short: "Release a piece of Software (Module)",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cobraCmd *cobra.Command, args []string) error {
 			var module string
+			var moduleDir string
 			if args[0] == "." {
 				module = ""
+				moduleDir = ""
 			} else {
 				module = args[0]
+				moduleDir = module + "/"
 			}
+
+			var mrArtifacts []monoreleaser.Artifact
+			for _, artifact := range *artifacts {
+				artifactNames := strings.SplitAfter(artifact, "/")
+				artifactName := artifactNames[len(artifactNames)-1]
+				file, err := builder.fs.Open(moduleDir + artifact)
+				if err != nil {
+					return err
+				}
+				defer file.Close()
+				fileStat, err := file.Stat()
+				if err != nil {
+					return err
+				}
+				mrArtifacts = append(mrArtifacts, monoreleaser.Artifact{Reader: bufio.NewReader(file), Name: artifactName, Size: fileStat.Size()})
+			}
+
 			return builder.releaser.Release(args[1], monoreleaser.ReleaseOptions{
-				Module: module,
+				Module:    module,
+				Artifacts: mrArtifacts,
 			})
 		},
 	}
+
+	artifacts = cmd.Flags().StringSlice("artifacts", []string{}, "artifacts to upload alongside the changelog (if supported by the provider)")
+	return cmd
 }
 
 func main() {
@@ -64,7 +92,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	rootCmdBuilder, err := initCli(repository, config)
+	rootCmdBuilder, err := initCli(repository, config, afero.NewOsFs())
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -103,7 +131,7 @@ func initConfig(configFile string) (*viper.Viper, error) {
 	return config, nil
 }
 
-func initCli(repository *git.Repository, config *viper.Viper) (*RootCommandBuilder, error) {
+func initCli(repository *git.Repository, config *viper.Viper, fs afero.Fs) (*RootCommandBuilder, error) {
 	owner := config.GetString("owner")
 	name := config.GetString("name")
 	provider := config.GetString("provider")
@@ -114,7 +142,11 @@ func initCli(repository *git.Repository, config *viper.Viper) (*RootCommandBuild
 	var releaser monoreleaser.Releaser
 	if provider == "github" {
 		var err error
-		releaser, err = monoreleaser.NewGithubReleaser(owner, gitRepository, monoreleaser.UserSettings{Token: token})
+		releaser, err = monoreleaser.NewGithubReleaser(
+			owner,
+			gitRepository,
+			monoreleaser.UserSettings{Token: token},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -122,7 +154,7 @@ func initCli(repository *git.Repository, config *viper.Viper) (*RootCommandBuild
 		releaser = PlaceholderReleaser{}
 	}
 
-	releaseCmd := ReleaseCommandBuilder{releaser}
+	releaseCmd := ReleaseCommandBuilder{releaser: releaser, fs: fs}
 	rootCmd := RootCommandBuilder{releaseCmd}
 
 	return &rootCmd, nil
