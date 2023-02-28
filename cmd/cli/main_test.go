@@ -90,6 +90,7 @@ func createServer(t *testing.T, changelog Changelog, releaser Releaser) *httptes
 		expectedBody, _ := json.Marshal(map[string]string{
 			"tag_name": "1.0.0",
 			"body":     string(changelog),
+			"name":     "1.0.0",
 		})
 
 		assert.Equal(t, expectedBody, actualBody)

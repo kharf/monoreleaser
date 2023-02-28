@@ -12,8 +12,12 @@ tidy:
 
 .PHONY: compile
 compile:
-	go mod download && go mod verify && \
-	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -v -o build/output/$(cmd) cmd/$(cmd)/main.go
+	go mod download
+	go mod verify
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=linux go build -ldflags="-s -w" -v -o build/output/monoreleaser-linux-amd64 cmd/$(cmd)/main.go
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=windows go build -ldflags="-s -w" -v -o build/output/monoreleaser-windows-amd64.exe cmd/$(cmd)/main.go
+	CGO_ENABLED=0 GOARCH=amd64 GOOS=darwin go build -ldflags="-s -w" -v -o build/output/monoreleaser-darwin-amd64 cmd/$(cmd)/main.go
+	CGO_ENABLED=0 GOARCH=arm64 GOOS=darwin go build -ldflags="-s -w" -v -o build/output/monoreleaser-darwin-arm64 cmd/$(cmd)/main.go
 
 .PHONY: clean
 clean:

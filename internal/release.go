@@ -103,6 +103,7 @@ func (rel GithubReleaser) post(tag Tag, changelog Changelog) error {
 	body, err := json.Marshal(map[string]string{
 		"tag_name": tag.Name,
 		"body":     string(changelog),
+		"name":     tag.Name,
 	})
 
 	if err != nil {
