@@ -69,6 +69,6 @@ jobs:
           MR_GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           curl -L https://github.com/kharf/monoreleaser/releases/download/v0.0.2/monoreleaser-linux-amd64 --output monoreleaser
-          monoreleaser release . {{ inputs.version }} --artifacts="build/output/monoreleaser-linux-amd64,build/output/monoreleaser-darwin-amd64,build/output/monoreleaser-darwin-arm64,build/output/monoreleaser-windows-amd64.exe"
+          ./monoreleaser release . {{ inputs.version }} --artifacts="build/output/monoreleaser-linux-amd64,build/output/monoreleaser-darwin-amd64,build/output/monoreleaser-darwin-arm64,build/output/monoreleaser-windows-amd64.exe"
 
 
