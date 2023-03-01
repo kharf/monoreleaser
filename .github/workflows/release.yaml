@@ -21,6 +21,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.branch }}
+          fetch-depth: "0"
 
       - name: Setup Go
         uses: actions/setup-go@v3
@@ -43,8 +44,6 @@ jobs:
           MR_GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           make cmd=cli compile
-          ls -la
-          ls -la build/output
           curl -L https://github.com/kharf/monoreleaser/releases/download/v0.0.2/monoreleaser-linux-amd64 --output monoreleaser
           chmod +x monoreleaser
           ./monoreleaser release . {{ inputs.version }} --artifacts="build/output/monoreleaser-linux-amd64,build/output/monoreleaser-darwin-amd64,build/output/monoreleaser-darwin-arm64,build/output/monoreleaser-windows-amd64.exe"
