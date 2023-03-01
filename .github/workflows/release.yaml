@@ -43,6 +43,7 @@ jobs:
           MR_GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           make cmd=cli compile
+          ls -la
           ls -la build/output
           curl -L https://github.com/kharf/monoreleaser/releases/download/v0.0.2/monoreleaser-linux-amd64 --output monoreleaser
           chmod +x monoreleaser
