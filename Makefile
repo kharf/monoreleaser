@@ -26,3 +26,8 @@ clean:
 .PHONY: test
 test:
 	go test ./... -v
+
+.PHONY: coverage
+coverage:
+	go test -coverprofile=/tmp/c.out -covermode=count ./...
+	go tool cover -func=/tmp/c.out

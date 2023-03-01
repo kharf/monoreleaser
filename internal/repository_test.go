@@ -108,7 +108,7 @@ func newRepo(empty bool) (GoGitRepository, []*Commit, []Tag, int) {
 
 	lenCommits := len(commits)
 
-	repository := GoGitRepository{repository: gitRepository, name: "myrepo"}
+	repository := NewGoGitRepository("myrepo", gitRepository)
 	return repository, commits, tags, lenCommits
 }
 

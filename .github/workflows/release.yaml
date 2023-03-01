@@ -1,11 +1,12 @@
-name: build
+name: release
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [ '*' ]
-  push:
     branches: [ main ]
+    inputs:
+      version:
+        description: "version to be released"
+        required: true
 
 permissions:
   contents: read
@@ -34,7 +35,7 @@ jobs:
         with:
           version: latest
 
-  build:
+  release:
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -56,18 +57,18 @@ jobs:
           make cmd=cli verify
 
       - name: Test
-        id: test
         run: |
           make cmd=cli coverage
-          total_coverage="$(go tool cover -func=/tmp/c.out | grep total | grep -Eo '[0-9]+\.[0-9]+')"
-          echo "total_coverage=$total_coverage" >> $GITHUB_OUTPUT
 
-      - name: Create comment
-        if: ${{github.event_name == 'pull_request'}}
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            Total Test Coverage:
-            ${{ steps.test.outputs.total_coverage}}% 
-          reactions: heart
+      - name: Compile
+        run: |
+          make cmd=cli compile
+
+      - name: Release
+        env:
+          MR_GITHUB_TOKEN: ${{ secrets.PAT }}
+        run: |
+          curl -L https://github.com/kharf/monoreleaser/releases/download/v0.0.2/monoreleaser-linux-amd64 --output monoreleaser
+          monoreleaser release . {{ inputs.version }} --artifacts="build/output/monoreleaser-linux-amd64,build/output/monoreleaser-darwin-amd64,build/output/monoreleaser-darwin-arm64,build/output/monoreleaser-windows-amd64.exe"
+
+

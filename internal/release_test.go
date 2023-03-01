@@ -49,10 +49,10 @@ func createRepoAndGithubReleaser(t *testing.T, userSettings UserSettings) ([]*Co
 	releaser, _ := NewGithubReleaser("kharf", repository, userSettings)
 
 	expectedUrl, _ := url.Parse("https://api.github.com/repos/kharf/myrepo/releases")
-	assert.Equal(t, expectedUrl.String(), releaser.releaseClient.url.String())
+	assert.Equal(t, expectedUrl.String(), releaser.ReleaseClient().URL().String())
 
 	assetUrl := "https://uploads.github.com/repos/kharf/myrepo/releases"
-	assert.Contains(t, releaser.assetClient.url.String(), assetUrl)
+	assert.Contains(t, releaser.AssetClient().URL().String(), assetUrl)
 
 	return commits, releaser
 }
