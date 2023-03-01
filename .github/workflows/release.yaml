@@ -41,6 +41,7 @@ jobs:
       - name: Compile
         run: |
           make cmd=cli compile
+          ls -la build/output
 
       - name: Release
         env:
