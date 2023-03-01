@@ -13,30 +13,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout out repository
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.event.inputs.branch }}
-
-      - name: Setup Go
-        uses: actions/setup-go@v3
-        with:
-          go-version-file: go.mod
-          check-latest: true
-          cache: true
-          cache-dependency-path: go.sum
-
-      - name: Lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-
   release:
-    name: Build
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout out repository
@@ -69,6 +47,7 @@ jobs:
           MR_GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           curl -L https://github.com/kharf/monoreleaser/releases/download/v0.0.2/monoreleaser-linux-amd64 --output monoreleaser
+          chmod +x monoreleaser
           ./monoreleaser release . {{ inputs.version }} --artifacts="build/output/monoreleaser-linux-amd64,build/output/monoreleaser-darwin-amd64,build/output/monoreleaser-darwin-arm64,build/output/monoreleaser-windows-amd64.exe"
 
 
