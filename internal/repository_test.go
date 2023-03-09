@@ -52,6 +52,7 @@ func newRepo(empty bool) (GoGitRepository, []*Commit, []Tag, int) {
 			"refactor: change",
 			"ci: change",
 			"build: change",
+			"build: another change",
 			"docs: newest",
 		}
 
@@ -223,7 +224,7 @@ func TestDiff_PathFilterSubDir(t *testing.T) {
 	oldTag := &Tag{Hash: commits[0].Hash}
 	diffCommits, _ := repository.Diff(newTag, oldTag, DiffOptions{Module: "subdir"})
 
-	assert.Len(t, commits, 10)
+	assert.Len(t, commits, 11)
 	assert.Len(t, diffCommits, 1)
 
 	assert.Equal(t, commits[lenCommits-1], diffCommits[0])

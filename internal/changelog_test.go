@@ -33,6 +33,7 @@ func TestGenerateChangelog(t *testing.T) {
 - refactor: change
 - ci: change
 - build: change
+- build: another change
 - docs: newest
 
 ## 🐛 Patch

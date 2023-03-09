@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
@@ -228,10 +229,92 @@ func (repo GoGitRepository) GetTags(opts GetTagOptions) ([]Tag, error) {
 		namesWithoutPrefix2 := strings.SplitAfter(moduleTags[j].Name, "/")
 		nameWithoutPrefix2 := namesWithoutPrefix2[len(namesWithoutPrefix2)-1]
 
-		return nameWithoutPrefix1 > nameWithoutPrefix2
+		v1 := Version{version: nameWithoutPrefix1}
+		v2 := Version{version: nameWithoutPrefix2}
+
+		greater, _ := v1.Gt(v2)
+		return greater
 	})
 
 	return moduleTags, nil
+}
+
+type Version struct {
+	version string
+}
+
+func (v Version) Gt(version Version) (bool, error) {
+	versionPrefix := "v"
+	v1 := strings.TrimPrefix(v.version, versionPrefix)
+	v2 := strings.TrimPrefix(version.version, versionPrefix)
+
+	versionSep := "."
+	v1Split := strings.Split(v1, versionSep)
+	v2Split := strings.Split(v2, versionSep)
+
+	major1, err := strconv.Atoi(v1Split[0])
+	if err != nil {
+		return false, err
+	}
+
+	major2, err := strconv.Atoi(v2Split[0])
+	if err != nil {
+		return false, err
+	}
+
+	minor1 := 0
+	if len(v1Split) > 1 {
+		minor1, err = strconv.Atoi(v1Split[1])
+		if err != nil {
+			return false, err
+		}
+	}
+
+	patch1 := 0
+	if len(v1Split) > 2 {
+		patch1, err = strconv.Atoi(v1Split[2])
+		if err != nil {
+			return false, err
+		}
+	}
+
+	minor2 := 0
+	if len(v2Split) > 1 {
+		minor2, err = strconv.Atoi(v2Split[1])
+		if err != nil {
+			return false, err
+		}
+	}
+
+	patch2 := 0
+	if len(v2Split) > 2 {
+		patch2, err = strconv.Atoi(v2Split[2])
+		if err != nil {
+			return false, err
+		}
+	}
+
+	isMajorGreater := major1 > major2
+	if isMajorGreater {
+		return true, nil
+	}
+
+	isMajorLower := major1 < major2
+	if isMajorLower {
+		return false, nil
+	}
+
+	isMinorGreater := minor1 > minor2
+	if isMinorGreater {
+		return true, nil
+	}
+
+	isMinorLower := minor1 < minor2
+	if isMinorLower {
+		return false, nil
+	}
+
+	return patch1 > patch2, nil
 }
 
 func tagName(name string, module string) string {
