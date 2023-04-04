@@ -318,3 +318,12 @@ func TestGetTags_NoTags(t *testing.T) {
 	lenTags := len(tags)
 	assert.Equal(t, 0, lenTags)
 }
+
+func TestVersion_Gt(t *testing.T) {
+	v1 := Version{version: "v1.0.0"}
+	v2 := Version{version: "v1.1.0"}
+
+	greater, err := v1.Gt(v2)
+	assert.NoError(t, err)
+	assert.False(t, greater)
+}
