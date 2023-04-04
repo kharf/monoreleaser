@@ -111,6 +111,8 @@ var _ monoreleaser.Releaser = PlaceholderReleaser{}
 var ErrUnimplemented = errors.New("implement me daddy")
 
 func (rel PlaceholderReleaser) Release(version string, opts monoreleaser.ReleaseOptions) error {
+	var _ = version
+	var _ = opts
 	return ErrUnimplemented
 }
 
