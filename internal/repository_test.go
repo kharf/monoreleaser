@@ -230,6 +230,17 @@ func TestDiff_PathFilterSubDir(t *testing.T) {
 	assert.Equal(t, commits[lenCommits-1], diffCommits[0])
 }
 
+func TestDiff_PathFilterSubDir_OldTagFromOtherDir(t *testing.T) {
+	newTag := Tag{Hash: commits[lenCommits-1].Hash}
+	oldTag := &Tag{Hash: commits[lenCommits-2].Hash}
+	diffCommits, _ := repository.Diff(newTag, oldTag, DiffOptions{Module: "subdir"})
+
+	assert.Len(t, commits, 11)
+	assert.Len(t, diffCommits, 1)
+
+	assert.Equal(t, commits[lenCommits-1], diffCommits[0])
+}
+
 func TestDiff_NoExistingTags(t *testing.T) {
 	newTag := Tag{Hash: "asdasd"}
 	oldTag := &Tag{Hash: "lkjhlkjh"}

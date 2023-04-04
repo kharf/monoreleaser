@@ -336,15 +336,27 @@ type DiffOptions struct {
 }
 
 func (repo GoGitRepository) Diff(newerTag Tag, olderTag *Tag, opts DiffOptions) ([]*Commit, error) {
-	historyIter, err := repo.History(HistoryOptions{Hash: newerTag.Hash, Module: opts.Module})
-
+	newHistoryIter, err := repo.History(HistoryOptions{Hash: newerTag.Hash, Module: opts.Module})
 	if err != nil {
 		return []*Commit{}, err
 	}
 
+	var oldCommit *Commit
+	if olderTag != nil {
+		oldHistoryIter, err := repo.History(HistoryOptions{Hash: olderTag.Hash, Module: opts.Module})
+		if err != nil {
+			return []*Commit{}, err
+		}
+
+		oldCommit, err = oldHistoryIter.Next()
+		if err != nil && !errors.Is(err, ErrEndOfHistory) {
+			return []*Commit{}, err
+		}
+	}
+
 	commitDiffs := make([]*Commit, 0, 20)
 	for {
-		newCommit, err := historyIter.Next()
+		newCommit, err := newHistoryIter.Next()
 		if err != nil && !errors.Is(err, ErrEndOfHistory) {
 			return []*Commit{}, err
 		}
@@ -353,9 +365,10 @@ func (repo GoGitRepository) Diff(newerTag Tag, olderTag *Tag, opts DiffOptions) 
 			break
 		}
 
-		if olderTag != nil && newCommit.Hash == olderTag.Hash {
+		if oldCommit != nil && newCommit.Hash == oldCommit.Hash {
 			break
 		}
+
 		commitDiffs = append(commitDiffs, newCommit)
 	}
 
