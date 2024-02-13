@@ -42,7 +42,7 @@ func (builder ReleaseCommandBuilder) Build() *cobra.Command {
 		Use:   "release [MODULE] [VERSION]",
 		Short: "Release a piece of Software (Module)",
 		Args:  cobra.MinimumNArgs(2),
-		RunE: func(cobraCmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			var module string
 			var moduleDir string
 			if args[0] == "." {
@@ -66,7 +66,14 @@ func (builder ReleaseCommandBuilder) Build() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				mrArtifacts = append(mrArtifacts, monoreleaser.Artifact{Reader: bufio.NewReader(file), Name: artifactName, Size: fileStat.Size()})
+				mrArtifacts = append(
+					mrArtifacts,
+					monoreleaser.Artifact{
+						Reader: bufio.NewReader(file),
+						Name:   artifactName,
+						Size:   fileStat.Size(),
+					},
+				)
 			}
 
 			return builder.releaser.Release(args[1], monoreleaser.ReleaseOptions{
@@ -76,7 +83,8 @@ func (builder ReleaseCommandBuilder) Build() *cobra.Command {
 		},
 	}
 
-	artifacts = cmd.Flags().StringSlice("artifacts", []string{}, "artifacts to upload alongside the changelog (if supported by the provider)")
+	artifacts = cmd.Flags().
+		StringSlice("artifacts", []string{}, "artifacts to upload alongside the changelog (if supported by the provider)")
 	return cmd
 }
 
@@ -133,7 +141,11 @@ func initConfig(configFile string) (*viper.Viper, error) {
 	return config, nil
 }
 
-func initCli(repository *git.Repository, config *viper.Viper, fs afero.Fs) (*RootCommandBuilder, error) {
+func initCli(
+	repository *git.Repository,
+	config *viper.Viper,
+	fs afero.Fs,
+) (*RootCommandBuilder, error) {
 	owner := config.GetString("owner")
 	name := config.GetString("name")
 	provider := config.GetString("provider")

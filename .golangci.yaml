@@ -36,3 +36,4 @@ linters:
     - forbidigo
     - funlen
     - depguard
+    - perfsprint
