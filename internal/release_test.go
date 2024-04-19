@@ -19,7 +19,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createRepoAndGithubReleaser(t *testing.T, userSettings UserSettings) ([]*Commit, *GithubReleaser) {
+func createRepoAndGithubReleaser(
+	t *testing.T,
+	userSettings UserSettings,
+) ([]*Commit, *GithubReleaser) {
 	repository, commits, _, _ := newRepo(false)
 
 	workTree, err := repository.repository.Worktree()
@@ -46,7 +49,7 @@ func createRepoAndGithubReleaser(t *testing.T, userSettings UserSettings) ([]*Co
 	}
 	commits = append(commits, &Commit{Hash: lastCommitHash.String(), Message: message})
 
-	releaser, _ := NewGithubReleaser("kharf", repository, userSettings)
+	releaser, _ := NewGithubReleaser("kharf", repository, 10, userSettings)
 
 	expectedUrl, _ := url.Parse("https://api.github.com/repos/kharf/myrepo/releases")
 	assert.Equal(t, expectedUrl.String(), releaser.ReleaseClient().URL().String())

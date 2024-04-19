@@ -149,6 +149,8 @@ func initCli(
 	owner := config.GetString("owner")
 	name := config.GetString("name")
 	provider := config.GetString("provider")
+	timeout := config.GetInt("timeout")
+	config.SetDefault("timeout", 10)
 	token := config.GetString("github.token")
 
 	gitRepository := monoreleaser.NewGoGitRepository(name, repository)
@@ -159,6 +161,7 @@ func initCli(
 		releaser, err = monoreleaser.NewGithubReleaser(
 			owner,
 			gitRepository,
+			timeout,
 			monoreleaser.UserSettings{Token: token},
 		)
 		if err != nil {

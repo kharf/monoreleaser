@@ -74,6 +74,7 @@ type UserSettings struct {
 func NewGithubReleaser(
 	owner string,
 	repository Repository,
+	timeout int,
 	userSettings UserSettings,
 ) (*GithubReleaser, error) {
 	releaseClient := http.Client{Timeout: time.Second * 10}
@@ -88,7 +89,7 @@ func NewGithubReleaser(
 		return nil, err
 	}
 
-	assetClient := http.Client{Timeout: time.Second * 10}
+	assetClient := http.Client{Timeout: time.Second * time.Duration(timeout)}
 	assetHeader := http.Header{}
 	assetHeader.Add("Accept", "application/vnd.github+json")
 	assetHeader.Add("Content-Type", "application/octet-stream")
