@@ -1,6 +1,7 @@
 package monoreleaser
 
 import (
+	"bufio"
 	"fmt"
 	"strings"
 )
@@ -75,7 +76,18 @@ func write(header string, sb *strings.Builder, change Change) error {
 			return err
 		}
 	}
-	if _, err := sb.WriteString("- " + change.Message + "\n"); err != nil {
+	bufferedReader := bufio.NewScanner(strings.NewReader(change.Message))
+	bufferedReader.Scan()
+	if _, err := sb.WriteString("- " + bufferedReader.Text() + "\n"); err != nil {
+		return err
+	}
+	for bufferedReader.Scan() {
+		line := bufferedReader.Text()
+		if _, err := sb.WriteString("\t" + line + "\n"); err != nil {
+			return err
+		}
+	}
+	if err := bufferedReader.Err(); err != nil {
 		return err
 	}
 	return nil

@@ -53,6 +53,7 @@ func newRepo(empty bool) (GoGitRepository, []*Commit, []Tag, int) {
 			"ci: change",
 			"build: change",
 			"build: another change",
+			"feat: multi line\nbody",
 			"docs: newest",
 		}
 
@@ -91,7 +92,13 @@ func newRepo(empty bool) (GoGitRepository, []*Commit, []Tag, int) {
 				version = dir + "v" + strconv.Itoa(i) + ".0.0"
 				latestMajor = i
 			case "fix":
-				version = dir + "v" + strconv.Itoa(latestMajor) + "." + strconv.Itoa(latestMinor) + "." + strconv.Itoa(i)
+				version = dir + "v" + strconv.Itoa(
+					latestMajor,
+				) + "." + strconv.Itoa(
+					latestMinor,
+				) + "." + strconv.Itoa(
+					i,
+				)
 			default:
 				version = dir + "v" + strconv.Itoa(latestMajor) + "." + strconv.Itoa(i) + ".0"
 				latestMinor = i
@@ -224,7 +231,7 @@ func TestDiff_PathFilterSubDir(t *testing.T) {
 	oldTag := &Tag{Hash: commits[0].Hash}
 	diffCommits, _ := repository.Diff(newTag, oldTag, DiffOptions{Module: "subdir"})
 
-	assert.Len(t, commits, 11)
+	assert.Len(t, commits, 12)
 	assert.Len(t, diffCommits, 1)
 
 	assert.Equal(t, commits[lenCommits-1], diffCommits[0])
@@ -235,7 +242,7 @@ func TestDiff_PathFilterSubDir_OldTagFromOtherDir(t *testing.T) {
 	oldTag := &Tag{Hash: commits[lenCommits-2].Hash}
 	diffCommits, _ := repository.Diff(newTag, oldTag, DiffOptions{Module: "subdir"})
 
-	assert.Len(t, commits, 11)
+	assert.Len(t, commits, 12)
 	assert.Len(t, diffCommits, 1)
 
 	assert.Equal(t, commits[lenCommits-1], diffCommits[0])

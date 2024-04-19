@@ -34,6 +34,8 @@ func TestGenerateChangelog(t *testing.T) {
 - ci: change
 - build: change
 - build: another change
+- feat: multi line
+	body
 - docs: newest
 
 ## 🐛 Patch
