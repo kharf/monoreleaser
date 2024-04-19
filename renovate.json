@@ -7,4 +7,17 @@
   "semanticCommits": "enabled",
   "rebaseWhen": "auto",
   "postUpdateOptions": ["gomodTidy"]
+  "customManagers": [
+      {
+          "customType": "regex",
+          "fileMatch": [
+              "^(.*?).yaml$"
+          ],
+          "matchStrings": [
+              "https://github.com/(?<depName>.*?)/releases/download/(?<currentValue>.*?)/"
+          ],
+          "versioningTemplate": "semver-coerced",
+          "datasourceTemplate": "github-releases"
+      }
+  ]
 }

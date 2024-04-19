@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -70,13 +71,19 @@ type UserSettings struct {
 	Token string
 }
 
-func NewGithubReleaser(owner string, repository Repository, userSettings UserSettings) (*GithubReleaser, error) {
+func NewGithubReleaser(
+	owner string,
+	repository Repository,
+	userSettings UserSettings,
+) (*GithubReleaser, error) {
 	releaseClient := http.Client{Timeout: time.Second * 10}
 	releaseHeader := http.Header{}
 	releaseHeader.Add("Accept", "application/vnd.github+json")
 	releaseHeader.Add("Authorization", "Bearer "+userSettings.Token)
 
-	releaseURL, err := url.Parse("https://api.github.com/repos/" + owner + "/" + repository.Name() + "/releases")
+	releaseURL, err := url.Parse(
+		"https://api.github.com/repos/" + owner + "/" + repository.Name() + "/releases",
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +94,9 @@ func NewGithubReleaser(owner string, repository Repository, userSettings UserSet
 	assetHeader.Add("Content-Type", "application/octet-stream")
 	assetHeader.Add("Authorization", "Bearer "+userSettings.Token)
 
-	assetURL, err := url.Parse("https://uploads.github.com/repos/" + owner + "/" + repository.Name() + "/releases")
+	assetURL, err := url.Parse(
+		"https://uploads.github.com/repos/" + owner + "/" + repository.Name() + "/releases",
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +165,11 @@ func (rel GithubReleaser) post(tag Tag, changelog Changelog, opts ReleaseOptions
 		return err
 	}
 
-	request, err := http.NewRequest(http.MethodPost, rel.releaseClient.url.String(), bytes.NewBuffer(body))
+	request, err := http.NewRequest(
+		http.MethodPost,
+		rel.releaseClient.url.String(),
+		bytes.NewBuffer(body),
+	)
 	if err != nil {
 		return err
 	}
@@ -169,13 +182,13 @@ func (rel GithubReleaser) post(tag Tag, changelog Changelog, opts ReleaseOptions
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode < 200 || response.StatusCode > 299 {
-		return ErrRequestUnsuccessful
-	}
-
 	responseBody, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
+	}
+
+	if response.StatusCode < 200 || response.StatusCode > 299 {
+		return fmt.Errorf("%w: %s", ErrRequestUnsuccessful, responseBody)
 	}
 
 	var ghResponse githubResponse
