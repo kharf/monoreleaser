@@ -6,7 +6,7 @@
   "platform": "github",
   "semanticCommits": "enabled",
   "rebaseWhen": "auto",
-  "postUpdateOptions": ["gomodTidy"]
+  "postUpdateOptions": ["gomodTidy"],
   "customManagers": [
       {
           "customType": "regex",
