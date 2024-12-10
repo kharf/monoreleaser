@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Self-hosted Renovate
-        uses: renovatebot/github-action@757597d1bb6993c6406e207997a85f2b20ff39be # v41.0.4
+        uses: renovatebot/github-action@e3a862510f27d57a380efb11f0b52ad7e8dbf213 # v41.0.6
         env:
           RENOVATE_REPOSITORIES: ${{ github.repository }}
         with:
